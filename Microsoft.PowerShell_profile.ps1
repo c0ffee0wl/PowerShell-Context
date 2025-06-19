@@ -15,11 +15,11 @@ if (-not (Test-Path $TranscriptDir)) {
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $Machine = $env:COMPUTERNAME -or (hostname)
 $User = $env:USERNAME -or $env:USER
-$TranscriptFile = "PowerShell_${Machine}_${User}_${Timestamp}_${PID}_original.txt"
+$TranscriptFile = "PowerShell_${Timestamp}_${PID}_original.txt"
 $Global:TRANSCRIPT_PATH = Join-Path $TranscriptDir $TranscriptFile
 
 # Set up sanitized transcript path
-$SanitizedFile = "PowerShell_${Machine}_${User}_${Timestamp}_${PID}.txt"
+$SanitizedFile = "PowerShell_${Timestamp}_${PID}.txt"
 $Global:SANITIZED_TRANSCRIPT_PATH = Join-Path $TranscriptDir $SanitizedFile
 
 # Function to start the Python transcript sanitizer
@@ -78,10 +78,6 @@ function Start-TranscriptSanitizer {
 # Start transcription - always use our own transcript file for logging
 try {
     Start-Transcript -Path $Global:TRANSCRIPT_PATH -Append -IncludeInvocationHeader -Force
-    # If PS_TRANSCRIPT_PATH wasn't set, set it to our transcript path for backwards compatibility
-    if (-not $env:PS_TRANSCRIPT_PATH) {
-        $env:PS_TRANSCRIPT_PATH = $Global:TRANSCRIPT_PATH
-    }
     
     # Start the Python sanitizer in the background
     $SanitizerResult = Start-TranscriptSanitizer -TranscriptPath $Global:TRANSCRIPT_PATH -SanitizedPath $Global:SANITIZED_TRANSCRIPT_PATH
@@ -105,13 +101,8 @@ function Get-Context {
     )
     
     if ($Environment) {
-        if (-not $env:PS_TRANSCRIPT_PATH) {
-            Write-Error "No transcript path available."
-            return
-        }
-        
         Write-Host "`nEnvironment Variable Setup:" -ForegroundColor Cyan
-        Write-Host "PowerShell: `$env:PS_TRANSCRIPT_PATH=`"$env:PS_TRANSCRIPT_PATH`"" -ForegroundColor White
+        Write-Host "PowerShell: `$env:TRANSCRIPT_PATH=`"$Global:SANITIZED_TRANSCRIPT_PATH`"" -ForegroundColor White
 
         return
     }
@@ -119,8 +110,8 @@ function Get-Context {
     # Determine which transcript to use based on -original parameter
     if ($original) {
         # Use original transcript
-        $TranscriptPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
-            $env:PS_TRANSCRIPT_PATH
+        $TranscriptPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path "$($env:PS_TRANSCRIPT_PATH)_original.txt")) {
+            "$($env:PS_TRANSCRIPT_PATH)_original.txt"
         } elseif ($Global:TRANSCRIPT_PATH -and (Test-Path $Global:TRANSCRIPT_PATH)) {
             $Global:TRANSCRIPT_PATH
         } else {
@@ -128,12 +119,10 @@ function Get-Context {
         }
     } else {
         # Use sanitized transcript (default)
-        $TranscriptPath = if ($Global:SANITIZED_TRANSCRIPT_PATH -and (Test-Path $Global:SANITIZED_TRANSCRIPT_PATH)) {
-            $Global:SANITIZED_TRANSCRIPT_PATH
-        } elseif ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
+        $TranscriptPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
             $env:PS_TRANSCRIPT_PATH
-        } elseif ($Global:TRANSCRIPT_PATH -and (Test-Path $Global:TRANSCRIPT_PATH)) {
-            $Global:TRANSCRIPT_PATH
+		} elseif ($Global:SANITIZED_TRANSCRIPT_PATH -and (Test-Path $Global:SANITIZED_TRANSCRIPT_PATH)) {
+            $Global:SANITIZED_TRANSCRIPT_PATH
         } else {
             $null
         }
@@ -199,21 +188,7 @@ function Extract-CommandsFromTranscript {
 }
 
 
-function Show-TranscriptInfo {
-    $CurrentPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
-        $env:PS_TRANSCRIPT_PATH
-    } elseif ($Global:TRANSCRIPT_PATH -and (Test-Path $Global:TRANSCRIPT_PATH)) {
-        $Global:TRANSCRIPT_PATH
-    } else {
-        "No active transcript found"
-    }
-    
-    $SanitizedPath = if ($Global:SANITIZED_TRANSCRIPT_PATH -and (Test-Path $Global:SANITIZED_TRANSCRIPT_PATH)) {
-        $Global:SANITIZED_TRANSCRIPT_PATH
-    } else {
-        "No sanitized transcript found"
-    }
-    
+function Show-TranscriptInfo {   
     Write-Host "`nTranscript Information:" -ForegroundColor Cyan
     Write-Host "Current transcript file: $CurrentPath" -ForegroundColor White
     Write-Host "Sanitized transcript file: $SanitizedPath" -ForegroundColor White
