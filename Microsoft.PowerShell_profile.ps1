@@ -79,6 +79,9 @@ function Start-TranscriptSanitizer {
 try {
     Start-Transcript -Path $Global:TRANSCRIPT_PATH -Append -IncludeInvocationHeader -Force
     
+    # Set environment variable for context function to find sanitized transcript
+    $env:PS_TRANSCRIPT_PATH = $Global:SANITIZED_TRANSCRIPT_PATH
+    
     # Start the Python sanitizer in the background
     $SanitizerResult = Start-TranscriptSanitizer -TranscriptPath $Global:TRANSCRIPT_PATH -SanitizedPath $Global:SANITIZED_TRANSCRIPT_PATH
     if ($SanitizerResult) {
