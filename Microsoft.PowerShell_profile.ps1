@@ -112,20 +112,18 @@ function Get-Context {
     
     # Determine which transcript to use based on -original parameter
     if ($original) {
-        # Use original transcript
-        $TranscriptPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path "$($env:PS_TRANSCRIPT_PATH)_original.txt")) {
-            "$($env:PS_TRANSCRIPT_PATH)_original.txt"
-        } elseif ($Global:TRANSCRIPT_PATH -and (Test-Path $Global:TRANSCRIPT_PATH)) {
+        # Use original transcript (the actual PowerShell transcript file)
+        $TranscriptPath = if ($Global:TRANSCRIPT_PATH -and (Test-Path $Global:TRANSCRIPT_PATH)) {
             $Global:TRANSCRIPT_PATH
         } else {
             $null
         }
     } else {
-        # Use sanitized transcript (default)
-        $TranscriptPath = if ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
-            $env:PS_TRANSCRIPT_PATH
-		} elseif ($Global:SANITIZED_TRANSCRIPT_PATH -and (Test-Path $Global:SANITIZED_TRANSCRIPT_PATH)) {
+        # Use sanitized transcript (default) - ONLY the sanitized version
+        $TranscriptPath = if ($Global:SANITIZED_TRANSCRIPT_PATH -and (Test-Path $Global:SANITIZED_TRANSCRIPT_PATH)) {
             $Global:SANITIZED_TRANSCRIPT_PATH
+        } elseif ($env:PS_TRANSCRIPT_PATH -and (Test-Path $env:PS_TRANSCRIPT_PATH)) {
+            $env:PS_TRANSCRIPT_PATH
         } else {
             $null
         }
